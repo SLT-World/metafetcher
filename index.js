@@ -82,11 +82,13 @@ export default {
                         const start = buffer.match(/<head[^>]*>/i);
                         if (start) {
                             capturingHead = true;
-                            headContent = buffer.slice(start.index);
+                            headContent = buffer.substring(start.index);
                         }
                     }
                     else headContent += value;
                     if (capturingHead && /<\/head>/i.test(headContent)) {
+                        const end = headContent.search(/<\/head>/i);
+                        headContent = headContent.substring(0, end + "</head>".length);
                         controller.abort();
                         break;
                     }
