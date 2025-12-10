@@ -1,5 +1,5 @@
 # Metafetcher
-A basic, lightweight **link preview API** designed for rendering link embeds in SLChat.
+A basic, lightweight **link preview API** initially designed for rendering link embeds in SLChat.
 
 ## Features
 - Supports [OpenGraph](https://ogp.me/) and [Twitter Card](https://developer.x.com/en/docs/x-for-websites/cards/overview/markup) metadata formats.
@@ -28,12 +28,14 @@ Response:
 }
 ```
 ### Raw `<head>`
+Request:
 ```
-/?url=https://www.planetminecraft.com/&raw=true
+/?raw=true&url=https://ogp.me/
 ```
 ### Firefox User Agent
+Request:
 ```
-/?url=https://www.planetminecraft.com/&discord=false
+/?discord=false&url=https://ogp.me/
 ```
 
 ## History
