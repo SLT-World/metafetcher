@@ -133,8 +133,8 @@ export default {
 
         let response;
 
-        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Access-Control-Allow-Origin": "https://slchat.alwaysdata.net", "Cache-Control": "public, max-age=86400" } });
-        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://slchat.alwaysdata.net", "Cache-Control": "public, max-age=86400" } });
+        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400" } });
+        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
 
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
