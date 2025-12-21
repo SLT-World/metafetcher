@@ -19,7 +19,14 @@ export default {
         const cache = caches.default;
 
         const cached = await cache.match(cacheKey);
-        if (cached) return cached;
+        if (cached) {
+            const cachedHeaders = new Headers(cached.headers);
+            for (const [key, value] of Object.entries(corsHeaders)) {
+                cachedHeaders.set(key, value);
+            }
+            return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers: cachedHeaders });
+        }
+        //if (cached) return cached;
 
         const parameters = new URL(request.url).searchParams;
         const url = parameters.get("url");
