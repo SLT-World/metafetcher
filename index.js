@@ -1,5 +1,13 @@
 export default {
     async fetch(request, env, ctx) {
+        const corsHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        };
+
+        if (request.method === "OPTIONS") { return new Response(null, { status: 204, headers: corsHeaders }); }
+
         function extractMeta(buffer, name) {
             const escape = name.replace(/:/g, "[:]");
             const match = buffer.match(new RegExp(`<meta[^>]+(?:property|name)=["']?${escape}["']?[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]*>|<meta[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]+(?:property|name)=["']?${escape}["']?[^>]*>`, "i"));
@@ -18,15 +26,15 @@ export default {
         const raw = parameters.get("raw") === "true";
         const firefoxUA = parameters.get("discord") === "false";
 
-        if (!url) return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        if (!url) return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
-        if (!/^https?:\/\//i.test(url)) return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        if (!/^https?:\/\//i.test(url)) return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
         let target;
         try { target = new URL(url); }
-        catch { return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }); }
+        catch { return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }); }
 
-        if (request.headers.get("host") == target.hostname) return new Response(JSON.stringify({ error: "Blocked" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        if (request.headers.get("host") == target.hostname) return new Response(JSON.stringify({ error: "Blocked" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
         const controller = new AbortController();
         const signal = controller.signal;
@@ -49,11 +57,11 @@ export default {
                 }
             });
         }
-        catch { return new Response(JSON.stringify({ error: "Fetch failed" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }); }
+        catch { return new Response(JSON.stringify({ error: "Fetch failed" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }); }
 
-        if (Number(upstream.headers.get("content-length")) > 500_000) return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        if (Number(upstream.headers.get("content-length")) > 500_000) return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } });
         const contentType = upstream.headers.get("content-type") || "";
-        if (!raw && !contentType.includes("text/html")) return new Response(JSON.stringify({ error: "Unsupported Content Type" }), { status: 415, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        if (!raw && !contentType.includes("text/html")) return new Response(JSON.stringify({ error: "Unsupported Content Type" }), { status: 415, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
         const charsetMatch = contentType.match(/charset=([^;]+)/i);
         const reader = upstream.body.pipeThrough(new TextDecoderStream(charsetMatch ? charsetMatch[1] : "utf-8")).getReader();
@@ -133,8 +141,8 @@ export default {
 
         let response;
 
-        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" } });
-        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" } });
+        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
+        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
 
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
