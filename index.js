@@ -18,15 +18,15 @@ export default {
         const raw = parameters.get("raw") === "true";
         const firefoxUA = parameters.get("discord") === "false";
 
-        if (!url) return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        if (!url) return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
         if (!/^https?:\/\//i.test(url)) return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
         let target;
         try { target = new URL(url); }
-        catch { return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json" } }); }
+        catch { return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }); }
 
-        if (request.headers.get("host") == target.hostname) return new Response(JSON.stringify({ error: "Blocked" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        if (request.headers.get("host") == target.hostname) return new Response(JSON.stringify({ error: "Blocked" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
         const controller = new AbortController();
         const signal = controller.signal;
@@ -49,11 +49,11 @@ export default {
                 }
             });
         }
-        catch { return new Response(JSON.stringify({ error: "Fetch failed" }), { status: 500, headers: { "Content-Type": "application/json" } }); }
+        catch { return new Response(JSON.stringify({ error: "Fetch failed" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }); }
 
-        if (Number(upstream.headers.get("content-length")) > 500_000) return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: { "Content-Type": "application/json" } });
+        if (Number(upstream.headers.get("content-length")) > 500_000) return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         const contentType = upstream.headers.get("content-type") || "";
-        if (!raw && !contentType.includes("text/html")) return new Response(JSON.stringify({ error: "Unsupported Content Type" }), { status: 415, headers: { "Content-Type": "application/json" } });
+        if (!raw && !contentType.includes("text/html")) return new Response(JSON.stringify({ error: "Unsupported Content Type" }), { status: 415, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
         const charsetMatch = contentType.match(/charset=([^;]+)/i);
         const reader = upstream.body.pipeThrough(new TextDecoderStream(charsetMatch ? charsetMatch[1] : "utf-8")).getReader();
@@ -133,8 +133,8 @@ export default {
 
         let response;
 
-        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400" } });
-        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
+        if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" } });
+        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" } });
 
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
