@@ -8,11 +8,25 @@ export default {
 
         if (request.method === "OPTIONS") { return new Response(null, { status: 204, headers: corsHeaders }); }
 
+        function unescapeHtml(value) {
+            if (!value) return null;
+            return value
+                .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+                .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+                .replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ({
+                    'amp': '&',
+                    'lt': '<',
+                    'gt': '>',
+                    'quot': '"',
+                    '#39': "'"
+                }[e]));
+        }
+
         function extractMeta(buffer, name) {
             const escape = name.replace(/:/g, "[:]");
             const match = buffer.match(new RegExp(`<meta[^>]+(?:property|name)=["']?${escape}["']?[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]*>|<meta[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]+(?:property|name)=["']?${escape}["']?[^>]*>`, "i"));
             if (!match) return null;
-            return match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || null;
+            return unescapeHtml(match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || null);
         }
 
         const cacheKey = new Request(request.url, { method: "GET" });
