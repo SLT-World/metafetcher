@@ -140,6 +140,7 @@ export default {
                     if (image && !image.startsWith("http")) image = new URL(image, target.origin + target.pathname).href;
 
                     if (!theme) theme = extractMeta(buffer, "theme-color");
+                    if (!theme) theme = extractMeta(buffer, "msapplication-TileColor");
 
                     if (buffer.includes("</head>") || isFinished()) {
                         controller.abort();
