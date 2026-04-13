@@ -95,9 +95,10 @@ export default {
         let title = null;
         let description = null;
         let image = null;
+        let video = null;
         let theme = null;
 
-        const isFinished = () => site && title && description && image && theme;
+        const isFinished = () => site && title && description && image && video && theme;
 
         try {
             while (true) {
@@ -136,8 +137,14 @@ export default {
                     if (!description) description = extractMeta(buffer, "twitter:description");
                     if (!description) description = extractMeta(buffer, "description");
                     if (!image) image = extractMeta(buffer, "og:image");
+                    if (!image) image = extractMeta(buffer, "og:image:url");
+                    if (!image) image = extractMeta(buffer, "og:image:secure_url");
                     if (!image) image = extractMeta(buffer, "twitter:image");
-                    if (image && !image.startsWith("http")) image = new URL(image, target.origin + target.pathname).href;
+                    if (image && !image.startsWith("http")) image = new URL(image, target.origin + target.pathname).href
+                    if (!video) video = extractMeta(buffer, "og:video");
+                    if (!video) video = extractMeta(buffer, "og:video:url");
+                    if (!video) video = extractMeta(buffer, "og:video:secure_url");
+                    if (video && !video.startsWith("http")) video = new URL(video, target.origin + target.pathname).href;
 
                     if (!theme) theme = extractMeta(buffer, "theme-color");
                     if (!theme) theme = extractMeta(buffer, "msapplication-TileColor");
@@ -164,7 +171,7 @@ export default {
         let response;
 
         if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
-        else response = new Response(JSON.stringify({ site, title, description, image, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
+        else response = new Response(JSON.stringify({ site, title, description, image, video, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
 
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
