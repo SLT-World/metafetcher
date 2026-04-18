@@ -23,8 +23,8 @@ export default {
         }
 
         function extractMeta(buffer, name) {
-            const escape = name.replace(/:/g, "[:]");
-            const match = buffer.match(new RegExp(`<meta[^>]+(?:property|name)=["']?${escape}["']?[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]*>|<meta[^>]+content=(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]+(?:property|name)=["']?${escape}["']?[^>]*>`, "i"));
+            const escape = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");;
+            const match = buffer.match(new RegExp(`<meta[^>]+(?:property|name)=["']?${escape}(?=["'\\s>])["']?[^>]*?content=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))[^>]*>|<meta[^>]+content=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))[^>]*?(?:property|name)=["']?${escape}(?=["'\\s>])["']?[^>]*>`, "i"));
             if (!match) return null;
             return unescapeHtml(match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || null);
         }
@@ -140,11 +140,11 @@ export default {
                     if (!image) image = extractMeta(buffer, "og:image:url");
                     if (!image) image = extractMeta(buffer, "og:image:secure_url");
                     if (!image) image = extractMeta(buffer, "twitter:image");
-                    if (image && !image.startsWith("http")) image = new URL(image, target.origin + target.pathname).href
+                    if (image && !image.startsWith("http")) image = new URL(image, target.origin).href
                     if (!video) video = extractMeta(buffer, "og:video");
                     if (!video) video = extractMeta(buffer, "og:video:url");
                     if (!video) video = extractMeta(buffer, "og:video:secure_url");
-                    if (video && !video.startsWith("http")) video = new URL(video, target.origin + target.pathname).href;
+                    if (video && !video.startsWith("http")) video = new URL(video, target.origin).href;
 
                     if (!theme) theme = extractMeta(buffer, "theme-color");
                     if (!theme) theme = extractMeta(buffer, "msapplication-TileColor");
