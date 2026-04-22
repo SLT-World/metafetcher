@@ -69,17 +69,22 @@ export default {
         let headContent = "";
         let capturingHead = false;
         let META_PRIORITY = {
-            title: ["og:title", "twitter:title", "title"],
+            title: ["og:title", "twitter:title", "title", "lark:url:video_title"],
             description: ["og:description", "twitter:description", "description"],
-            image: ["og:image", "og:image:secure_url", "og:image:url", "twitter:image"],
-            video: ["og:video", "og:video:secure_url", "og:video:url"],
+            image: ["og:image", "og:image:secure_url", "og:image:url", "twitter:image", "lark:url:video_cover_image_url"],
+            video: ["og:video", "og:video:secure_url", "og:video:url", "lark:url:video_iframe_url"],
             site: ["og:site_name", "twitter:site"],
             theme: ["theme-color", "msapplication-TileColor"]
         };
         const PRIORITY_OVERRIDE = {
             "reddit.com": {
-                title: ["title", "og:title", "twitter:title"],
+                title: ["title", "og:title", "twitter:title", "lark:url:video_title"],
                 description: ["description", "og:description", "twitter:description"]
+            },
+            "tiktok.com": {
+                title: ["lark:url:video_title", "title", "og:title", "twitter:title"],
+                image: ["lark:url:video_cover_image_url", "og:image", "og:image:secure_url", "og:image:url", "twitter:image"],
+                video: ["lark:url:video_iframe_url", "og:video", "og:video:secure_url", "og:video:url"],
             }
         };
         const metaState = {};
@@ -126,6 +131,7 @@ export default {
                     tryExtract("site", "twitter:site", buffer);
                     tryExtract("title", "og:title", buffer);
                     tryExtract("title", "twitter:title", buffer);
+                    tryExtract("title", "lark:url:video_title", buffer);
                     tryExtract("title", "title", buffer);
                     const titleTag = buffer.match(/<title[^>]*>(.*?)<\/title>/i);
                     if (titleTag) {
@@ -140,10 +146,12 @@ export default {
                     tryExtract("image", "og:image:secure_url", buffer);
                     tryExtract("image", "og:image:url", buffer);
                     tryExtract("image", "twitter:image", buffer);
+                    tryExtract("image", "lark:url:video_cover_image_url", buffer);
                     if (metaState.image && !metaState.image.value.startsWith("http")) metaState.image.value = new URL(metaState.image.value, target.origin).href
                     tryExtract("video", "og:video", buffer);
                     tryExtract("video", "og:video:secure_url", buffer);
                     tryExtract("video", "og:video:url", buffer);
+                    tryExtract("video", "lark:url:video_iframe_url", buffer);
                     if (metaState.video && !metaState.video.value.startsWith("http")) metaState.video.value = new URL(metaState.video.value, target.origin).href
                     tryExtract("theme", "theme-color", buffer);
                     tryExtract("theme", "msapplication-TileColor", buffer);
