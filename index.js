@@ -5,7 +5,6 @@ export default {
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "*",
         };
-
         if (request.method === "OPTIONS") { return new Response(null, { status: 204, headers: corsHeaders }); }
 
         function unescapeHtml(value) {
@@ -30,14 +29,7 @@ export default {
         const cacheKey = new Request(request.url, { method: "GET" });
         const cache = caches.default;
         const cached = await cache.match(cacheKey);
-        if (cached) {
-            const cachedHeaders = new Headers(cached.headers);
-            for (const [key, value] of Object.entries(corsHeaders)) {
-                cachedHeaders.set(key, value);
-            }
-            return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers: cachedHeaders });
-        }
-        //if (cached) return cached;
+        if (cached) return cached;
         const parameters = new URL(request.url).searchParams;
         const url = parameters.get("url");
         const raw = parameters.get("raw") === "true";
@@ -76,7 +68,7 @@ export default {
         let buffer = "";
         let headContent = "";
         let capturingHead = false;
-        const META_PRIORITY = {
+        let META_PRIORITY = {
             title: ["og:title", "twitter:title", "title"],
             description: ["og:description", "twitter:description", "description"],
             image: ["og:image", "og:image:secure_url", "og:image:url", "twitter:image"],
@@ -84,7 +76,21 @@ export default {
             site: ["og:site_name", "twitter:site"],
             theme: ["theme-color", "msapplication-TileColor"]
         };
+        const PRIORITY_OVERRIDE = {
+            "reddit.com": {
+                title: ["title", "og:title", "twitter:title"],
+                description: ["description", "og:description", "twitter:description"]
+            }
+        };
         const metaState = {};
+        for (const domain in PRIORITY_OVERRIDE) {
+            if (target.hostname.endsWith(domain)) {
+                const override = PRIORITY_OVERRIDE[domain];
+                for (const key in override) {
+                    META_PRIORITY[key] = override[key];
+                }
+            }
+        }
         function tryExtract(field, type, buffer) {
             const value = extractMeta(buffer, type);
             if (!value) return;
