@@ -21,17 +21,14 @@ export default {
                     '#39': "'"
                 }[e]));
         }
-
         function extractMeta(buffer, name) {
             const escape = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");;
             const match = buffer.match(new RegExp(`<meta[^>]+(?:property|name)=["']?${escape}(?=["'\\s>])["']?[^>]*?content=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))[^>]*>|<meta[^>]+content=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))[^>]*?(?:property|name)=["']?${escape}(?=["'\\s>])["']?[^>]*>`, "i"));
             if (!match) return null;
             return unescapeHtml(match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || null);
         }
-
         const cacheKey = new Request(request.url, { method: "GET" });
         const cache = caches.default;
-
         const cached = await cache.match(cacheKey);
         if (cached) {
             const cachedHeaders = new Headers(cached.headers);
@@ -41,26 +38,18 @@ export default {
             return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers: cachedHeaders });
         }
         //if (cached) return cached;
-
         const parameters = new URL(request.url).searchParams;
         const url = parameters.get("url");
         const raw = parameters.get("raw") === "true";
-        const firefoxUA = parameters.get("discord") === "false";
-
         if (!url) return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
-
         if (!/^https?:\/\//i.test(url)) return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
-
         let target;
         try { target = new URL(url); }
         catch { return new Response(JSON.stringify({ error: "Invalid URL" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }); }
-
         if (request.headers.get("host") == target.hostname) return new Response(JSON.stringify({ error: "Blocked" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
-
         const controller = new AbortController();
         const signal = controller.signal;
         const timeout = setTimeout(() => controller.abort(), 10000);
-
         let upstream;
         try {
             upstream = await fetch(target.toString(), {
@@ -69,7 +58,7 @@ export default {
                 signal,
                 cf: { scrapeShield: false },
                 headers: {
-                    "User-Agent": firefoxUA ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0" : "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com/)",
+                    "User-Agent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com/)",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.5",
                     "Accept-Encoding": "identity",
@@ -79,34 +68,37 @@ export default {
             });
         }
         catch { return new Response(JSON.stringify({ error: "Fetch failed" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }); }
-
         if (Number(upstream.headers.get("content-length")) > 500_000) return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } });
         const contentType = upstream.headers.get("content-type") || "";
         if (!raw && !contentType.includes("text/html")) return new Response(JSON.stringify({ error: "Unsupported Content Type" }), { status: 415, headers: { "Content-Type": "application/json", ...corsHeaders } });
-
         const charsetMatch = contentType.match(/charset=([^;]+)/i);
         const reader = upstream.body.pipeThrough(new TextDecoderStream(charsetMatch ? charsetMatch[1] : "utf-8")).getReader();
-
         let buffer = "";
         let headContent = "";
         let capturingHead = false;
-
-        let site = null;
-        let title = null;
-        let description = null;
-        let image = null;
-        let video = null;
-        let theme = null;
-
-        const isFinished = () => site && title && description && image && video && theme;
-
+        const META_PRIORITY = {
+            title: ["og:title", "twitter:title", "title"],
+            description: ["og:description", "twitter:description", "description"],
+            image: ["og:image", "og:image:secure_url", "og:image:url", "twitter:image"],
+            video: ["og:video", "og:video:secure_url", "og:video:url"],
+            site: ["og:site_name", "twitter:site"],
+            theme: ["theme-color", "msapplication-TileColor"]
+        };
+        const metaState = {};
+        function tryExtract(field, type, buffer) {
+            const value = extractMeta(buffer, type);
+            if (!value) return;
+            const priority = META_PRIORITY[field].indexOf(type);
+            const current = metaState[field];
+            if (!current || priority < current.priority) metaState[field] = { value, priority };
+        }
+        const isFinished = () => metaState.site && metaState.title && metaState.description && metaState.image && metaState.video && metaState.theme;
         try {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
                 buffer += value;
                 if (buffer.length > 20000) buffer = buffer.slice(-10000);
-
                 if (raw) {
                     if (!capturingHead) {
                         const start = buffer.match(/<head[^>]*>/i);
@@ -124,55 +116,57 @@ export default {
                     }
                 }
                 else {
-                    if (!site) site = extractMeta(buffer, "og:site_name");
-                    if (!site) site = extractMeta(buffer, "twitter:site");
-                    if (!title) title = extractMeta(buffer, "og:title");
-                    if (!title) title = extractMeta(buffer, "twitter:title");
-                    if (!title) title = extractMeta(buffer, "title");
-                    if (!title) {
-                        const meta = buffer.match(/<title[^>]*>(.*?)<\/title>/i);
-                        if (meta) title = meta[1].trim();
+                    tryExtract("site", "og:site_name", buffer);
+                    tryExtract("site", "twitter:site", buffer);
+                    tryExtract("title", "og:title", buffer);
+                    tryExtract("title", "twitter:title", buffer);
+                    tryExtract("title", "title", buffer);
+                    const titleTag = buffer.match(/<title[^>]*>(.*?)<\/title>/i);
+                    if (titleTag) {
+                        const priority = META_PRIORITY.title.indexOf("title");
+                        const current = metaState.title;
+                        if (!current || priority < current.priority) metaState.title = { value: titleTag[1].trim(), priority };
                     }
-                    if (!description) description = extractMeta(buffer, "og:description");
-                    if (!description) description = extractMeta(buffer, "twitter:description");
-                    if (!description) description = extractMeta(buffer, "description");
-                    if (!image) image = extractMeta(buffer, "og:image");
-                    if (!image) image = extractMeta(buffer, "og:image:url");
-                    if (!image) image = extractMeta(buffer, "og:image:secure_url");
-                    if (!image) image = extractMeta(buffer, "twitter:image");
-                    if (image && !image.startsWith("http")) image = new URL(image, target.origin).href
-                    if (!video) video = extractMeta(buffer, "og:video");
-                    if (!video) video = extractMeta(buffer, "og:video:url");
-                    if (!video) video = extractMeta(buffer, "og:video:secure_url");
-                    if (video && !video.startsWith("http")) video = new URL(video, target.origin).href;
-
-                    if (!theme) theme = extractMeta(buffer, "theme-color");
-                    if (!theme) theme = extractMeta(buffer, "msapplication-TileColor");
-
+                    tryExtract("description", "og:description", buffer);
+                    tryExtract("description", "twitter:description", buffer);
+                    tryExtract("description", "description", buffer);
+                    tryExtract("image", "og:image", buffer);
+                    tryExtract("image", "og:image:secure_url", buffer);
+                    tryExtract("image", "og:image:url", buffer);
+                    tryExtract("image", "twitter:image", buffer);
+                    if (metaState.image && !metaState.image.value.startsWith("http")) metaState.image.value = new URL(metaState.image.value, target.origin).href
+                    tryExtract("video", "og:video", buffer);
+                    tryExtract("video", "og:video:secure_url", buffer);
+                    tryExtract("video", "og:video:url", buffer);
+                    if (metaState.video && !metaState.video.value.startsWith("http")) metaState.video.value = new URL(metaState.video.value, target.origin).href
+                    tryExtract("theme", "theme-color", buffer);
+                    tryExtract("theme", "msapplication-TileColor", buffer);
                     if (buffer.includes("</head>") || isFinished()) {
                         controller.abort();
                         break;
                     }
-                    if (buffer.length > 100000 && title && description) {
+                    if (buffer.length > 100000 && metaState.title && metaState.description) {
                         controller.abort();
                         break;
                     }
                 }
-                
                 if (buffer.length > 200000) {
                     controller.abort();
                     break;
                 }
             }
         } catch { }
-
         clearTimeout(timeout);
-
         let response;
-
         if (raw) response = new Response(headContent, { headers: { "Content-Type": "text/plain; charset=UTF-8", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
-        else response = new Response(JSON.stringify({ site, title, description, image, video, theme }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
-
+        else response = new Response(JSON.stringify({
+            title: metaState.title?.value || null,
+            description: metaState.description?.value || null,
+            image: metaState.image?.value || null,
+            video: metaState.video?.value || null,
+            site: metaState.site?.value || null,
+            theme: metaState.theme?.value || null
+        }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
     }
